@@ -1,0 +1,102 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String?  @unique
+  plan      String   @default("Free")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tryOnResults TryOnResult[]
+
+  @@map("users")
+}
+
+model Gender {
+  id         Int        @id @default(autoincrement())
+  name       String     @unique // "mens" | "womens" | "kids"
+  displayName String    // "Men's" | "Women's" | "Kids"
+  bannerImage String   // Unsplash banner image
+  isActive   Boolean    @default(true)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  categories Category[]
+
+  @@map("genders")
+}
+
+model Category {
+  id         Int      @id @default(autoincrement())
+  name       String   // "formals" | "causual" | "blazer" | "traditional" | "casuals" | "chudi" | "modern_wears"
+  displayName String  // "Formals" | "Casual" | "Blazer" etc.
+  bannerImage String  // Unsplash banner image
+  genderId   Int
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  gender Gender  @relation(fields: [genderId], references: [id])
+  outfits Outfit[]
+
+  @@unique([name, genderId])
+  @@map("categories")
+}
+
+model Outfit {
+  id          Int      @id @default(autoincrement())
+  name        String
+  categoryId  Int
+  clothType   String   // "upper" | "lower" | "fullbody" (for FitRoom API)
+  imageUrl    String   // HTTPS URL to image
+  description String?
+  price       Int      // Price in rupees
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category     Category      @relation(fields: [categoryId], references: [id])
+  tryOnResults TryOnResult[]
+
+  @@map("outfits")
+}
+
+model TryOnResult {
+  id             Int      @id @default(autoincrement())
+  userId         Int
+  outfitId       Int?
+  resultImageUrl String
+  taskId         String?
+  createdAt      DateTime @default(now())
+
+  user   User    @relation(fields: [userId], references: [id])
+  outfit Outfit? @relation(fields: [outfitId], references: [id])
+
+  @@map("try_on_results")
+}
+
+model BatchTryOnResult {
+  id             Int      @id @default(autoincrement())
+  userId         Int
+  userImagePath  String
+  batchId        String   @unique
+  totalOutfits   Int
+  completedCount Int      @default(0)
+  status         String   @default("processing") // "processing" | "completed" | "failed"
+  results        String   // JSON array of {outfitId, resultImageUrl, taskId}
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("batch_try_on_results")
+}
