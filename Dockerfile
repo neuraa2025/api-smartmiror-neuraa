@@ -16,7 +16,7 @@ COPY --from=build-stage /home/node/api/dist /api
 COPY --from=build-stage /home/node/api/package.json /api
 COPY --from=build-stage /home/node/api/.env.prod /api/.env
 COPY --from=build-stage /home/node/api/prisma /api
-COPY --from=build-stage /home/node/api/src/images /api/images
+
 RUN npm install --only=production
 RUN npm run generate 
 
