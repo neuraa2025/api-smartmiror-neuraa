@@ -123,12 +123,30 @@ async function saveBase64ToFile(
     fs.writeFileSync(filePath, imageBuffer);
 
     console.log(`✅ Base64 image saved to: ${filePath}`);
+
+    // Schedule file deletion after processing
+    setTimeout(() => {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        console.log(`🗑️ Temporary file deleted: ${filePath}`);
+      }
+    }, 60000); // Delete after 1 minute
+
     return filePath;
   } catch (error) {
     console.error("Error saving base64 to file:", error);
     throw new Error("Failed to process base64 image");
   }
 }
+
+// Middleware to handle process abortion
+router.use((req, res, next) => {
+  req.on("close", () => {
+    console.log("🔴 Request aborted by the client.");
+    // Add logic to stop backend processing if needed
+  });
+  next();
+});
 
 // Helper function to convert base64 to buffer
 async function convertBase64ToBuffer(base64Data: string): Promise<Buffer> {
@@ -682,7 +700,7 @@ router.post("/single", async (req, res) => {
       data: {
         userId: validateUserId(userId),
         outfitId: outfit.id,
-        resultImageUrl: result.resultImageUrl || '',
+        resultImageUrl: result.resultImageUrl || "",
         taskId: result.taskId,
       },
     });
@@ -769,7 +787,9 @@ router.post("/ai-suggestion", async (req, res) => {
     });
 
     // Get random starting point and take 10 outfits
-    const randomSkip = Math.floor(Math.random() * Math.max(0, totalOutfits - 10));
+    const randomSkip = Math.floor(
+      Math.random() * Math.max(0, totalOutfits - 10)
+    );
     const randomOutfits = await prisma.outfit.findMany({
       where: {
         categoryId: categoryRecord.id,
@@ -779,7 +799,9 @@ router.post("/ai-suggestion", async (req, res) => {
       take: 10,
     });
 
-    console.log(`📊 Retrieved ${randomOutfits.length} random outfits for AI suggestion`);
+    console.log(
+      `📊 Retrieved ${randomOutfits.length} random outfits for AI suggestion`
+    );
 
     if (randomOutfits.length === 0) {
       return res.status(404).json({
@@ -789,7 +811,10 @@ router.post("/ai-suggestion", async (req, res) => {
     }
 
     // Save base64 image to file
-    const userImagePath = await saveBase64ToFile(capturedImage, "ai-suggestion");
+    const userImagePath = await saveBase64ToFile(
+      capturedImage,
+      "ai-suggestion"
+    );
 
     // Create batch record for AI suggestion (similar to multiple selection)
     const batchId = uuidv4();
@@ -806,7 +831,11 @@ router.post("/ai-suggestion", async (req, res) => {
     console.log(`✅ AI suggestion batch created: ${batchId}`);
 
     // Start processing outfits in background (one by one)
-    processAISuggestionOutfits(batchRecord.id, randomOutfits, userImagePath).catch((error: any) => {
+    processAISuggestionOutfits(
+      batchRecord.id,
+      randomOutfits,
+      userImagePath
+    ).catch((error: any) => {
       console.error("Error in AI suggestion processing:", error);
     });
 
@@ -842,7 +871,7 @@ router.get("/ai-suggestion-status/:batchId", async (req, res) => {
     }
 
     const allResults = JSON.parse(batchRecord.results);
-    
+
     // Get outfit details for all results
     const outfitIds = allResults.map((result: any) => result.outfitId);
     const outfits = await prisma.outfit.findMany({
@@ -962,7 +991,7 @@ router.post("/multiple", async (req, res) => {
       data: {
         batchId,
         totalOutfits: outfits.length,
-        selectedOutfits: outfits.map(outfit => ({
+        selectedOutfits: outfits.map((outfit) => ({
           id: outfit.id,
           name: outfit.name,
           imageUrl: outfit.imageUrl,
@@ -979,8 +1008,6 @@ router.post("/multiple", async (req, res) => {
     });
   }
 });
-
-
 
 // GET /api/tryon/batch-status/:batchId - Get batch status for multiple selection
 router.get("/batch-status/:batchId", async (req, res) => {
@@ -999,7 +1026,7 @@ router.get("/batch-status/:batchId", async (req, res) => {
     }
 
     const allResults = JSON.parse(batchRecord.results);
-    
+
     // Get outfit details for all results
     const outfitIds = allResults.map((result: any) => result.outfitId);
     const outfits = await prisma.outfit.findMany({
@@ -1019,8 +1046,12 @@ router.get("/batch-status/:batchId", async (req, res) => {
       };
     });
 
-    const completedCount = allResults.filter((r: any) => r.status === 'completed').length;
-    const failedCount = allResults.filter((r: any) => r.status === 'failed').length;
+    const completedCount = allResults.filter(
+      (r: any) => r.status === "completed"
+    ).length;
+    const failedCount = allResults.filter(
+      (r: any) => r.status === "failed"
+    ).length;
     const isComplete = batchRecord.status === "completed";
 
     res.json({
@@ -1129,8 +1160,6 @@ async function processOutfitsIndividually(
   }
 }
 
-
-
 // Helper function to process single outfit with FitRoom API
 async function processSingleOutfit(
   outfit: any,
@@ -1236,7 +1265,9 @@ async function processAISuggestionOutfits(
     for (let i = 0; i < outfits.length; i++) {
       const outfit = outfits[i];
       console.log(
-        `\n🔄 Processing AI suggestion ${i + 1}/${outfits.length}: ID=${outfit.id}, Name="${outfit.name}"`
+        `\n🔄 Processing AI suggestion ${i + 1}/${outfits.length}: ID=${
+          outfit.id
+        }, Name="${outfit.name}"`
       );
 
       try {
@@ -1271,17 +1302,16 @@ async function processAISuggestionOutfits(
           });
         }
 
-        console.log(`💾 Saved AI suggestion result for outfit ${outfit.id} to database`);
-        
+        console.log(
+          `💾 Saved AI suggestion result for outfit ${outfit.id} to database`
+        );
+
         // Small delay between processing each outfit to allow frontend to update
         if (i < outfits.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise((resolve) => setTimeout(resolve, 500));
         }
       } catch (error) {
-        console.error(
-          `❌ Failed to process outfit ${outfit.name}:`,
-          error
-        );
+        console.error(`❌ Failed to process outfit ${outfit.name}:`, error);
 
         // Save failed result to database
         const batchRecord = await prisma.batchTryOnResult.findUnique({
