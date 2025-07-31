@@ -6,6 +6,9 @@ import fs from "fs";
 import path from "path";
 import multer from "multer";
 import { v4 as uuidv4 } from "uuid";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -31,8 +34,7 @@ const upload = multer({ storage });
 
 // FitRoom API Configuration
 const FITROOM_API_URL = "https://platform.fitroom.app/api/tryon/v2/tasks";
-const FITROOM_API_KEY =
-  "444fd7cf3b3447ec8323cc2cd02a790876ea6ec13f1835b2c419ea6b25946acb";
+const FITROOM_API_KEY = process.env.FITROOM_API_KEY;
 
 console.log("🔧 FitRoom API Configuration:");
 console.log("   🌐 API URL:", FITROOM_API_URL);
@@ -42,6 +44,9 @@ if (FITROOM_API_KEY) {
 } else {
   console.log("   ⚠️  FitRoom API Key missing - using MOCK responses");
 }
+
+// Debugging: Log the FITROOM_API_KEY to ensure it is loaded correctly
+console.log("🔍 Debug: FITROOM_API_KEY:", process.env.FITROOM_API_KEY);
 
 interface TryOnRequest {
   userImagePath?: string;
@@ -122,7 +127,7 @@ async function saveBase64ToFile(
     // Write buffer to file
     fs.writeFileSync(filePath, imageBuffer);
 
-    console.log(`✅ Base64 image saved to: ${filePath}`);
+    // console.log(`✅ Base64 image saved to: ${filePath}`);
 
     // Schedule file deletion after processing
     setTimeout(() => {
